@@ -8,7 +8,9 @@ from pydantic import BaseModel
 from flow import build_flow
 from services import connect_neo4j, read_schema_snapshot, execute_cypher
 from services.database import init_db
+from services.chatbot_service import ChatbotService
 from .user_routes import router as user_router
+from .chatbot_routes import router as chatbot_router
 
 class Text2CypherRequest(BaseModel):
     """_summary_
@@ -41,6 +43,7 @@ app.add_middleware(
 
 # Include user routes
 app.include_router(user_router)
+app.include_router(chatbot_router)
 
 @app.on_event("startup")
 def _startup() -> None:
@@ -51,6 +54,21 @@ def _startup() -> None:
     # app.state.flow = build_flow()
     # app.state.driver = connect_neo4j()
     # app.state.schema_text = read_schema_snapshot(app.state.driver)
+
+    # Initialize chatbot service (Gemini + Neo4j)
+    try:
+        driver = connect_neo4j()
+        app.state.chatbot_service = ChatbotService(driver=driver)
+        app.state.schema_text = read_schema_snapshot(driver)
+        app.state.driver = driver
+    except Exception as exc:  # pragma: no cover - depends on env
+        # Keep server running even if chatbot init fails (e.g., missing keys)
+        app.state.chatbot_service = None
+        print(f"[startup] Chatbot service not initialized: {exc!r}")
+
+    # Provide safe defaults so /schema and text2cypher don't crash
+    app.state.schema_text = getattr(app.state, "schema_text", None) or "Schema unavailable"
+    app.state.driver = getattr(app.state, "driver", None) or connect_neo4j()
 
 @app.on_event("shutdown")
 def _shutdown() -> None:
@@ -90,6 +108,13 @@ def text2cypher(req: Text2CypherRequest):
         _type_: _description_
     """
     try:
+        flow = getattr(app.state, "flow", None)
+        if not flow:
+            raise HTTPException(
+                status_code=503,
+                detail="text2cypher pipeline is not initialized.",
+            )
+
         state = {
             "question": req.question,
             "schema_text": app.state.schema_text,
@@ -98,7 +123,7 @@ def text2cypher(req: Text2CypherRequest):
             "rows": None,
         }
 
-        final = app.state.flow.invoke(state)
+        final = flow.invoke(state)
         extraction = final["extraction"]
         query = final["query"]
 
