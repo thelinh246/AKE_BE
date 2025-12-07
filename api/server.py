@@ -8,10 +8,12 @@ from services.database import init_db
 from services.chatbot_service import ChatbotService
 from .user_routes import router as user_router
 from .chatbot_routes import router as chatbot_router
+from .graph_routes import router as graph_router
 
 TAGS_METADATA = [
     {"name": "users", "description": "Đăng ký, đăng nhập và quản lý người dùng"},
     {"name": "chatbot", "description": "Hỏi đáp tư vấn du học/visa (Gemini + Neo4j)"},
+    {"name": "graph", "description": "Thống kê và sơ đồ Neo4j"},
     {"name": "system", "description": "Kiểm tra sức khỏe hệ thống và xem schema Neo4j"},
 ]
 
@@ -37,6 +39,7 @@ app.add_middleware(
 # Include user routes
 app.include_router(user_router)
 app.include_router(chatbot_router)
+app.include_router(graph_router)
 
 @app.on_event("startup")
 def _startup() -> None:
