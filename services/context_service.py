@@ -58,7 +58,7 @@ Chỉ trả về JSON với đúng hai key không bao gồm ```json ... ```:
     model = _get_model()
     try:
         response = model.generate_content(prompt)
-        print("Gemini rewrite response:", response)
+
         raw_text = (getattr(response, "text", "") or "").strip()
         if not raw_text:
             raise ValueError("Empty response from Gemini rewrite.")
