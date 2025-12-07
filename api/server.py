@@ -1,38 +1,31 @@
 from __future__ import annotations
-from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 
-from flow import build_flow
-from services import connect_neo4j, read_schema_snapshot, execute_cypher
+from services import connect_neo4j, read_schema_snapshot
 from services.database import init_db
 from services.chatbot_service import ChatbotService
 from .user_routes import router as user_router
 from .chatbot_routes import router as chatbot_router
 
-class Text2CypherRequest(BaseModel):
-    """_summary_
+TAGS_METADATA = [
+    {"name": "users", "description": "Đăng ký, đăng nhập và quản lý người dùng"},
+    {"name": "chatbot", "description": "Hỏi đáp tư vấn du học/visa (Gemini + Neo4j)"},
+    {"name": "system", "description": "Kiểm tra sức khỏe hệ thống và xem schema Neo4j"},
+]
 
-    Args:
-        BaseModel (_type_): _description_
-    """
-    question: str
-    execute: bool = False
+APP_DESCRIPTION = (
+    "API cho hệ thống tư vấn VISA: bao gồm đăng ký/đăng nhập người dùng và chatbot Neo4j."
+    " Xem ngay các endpoint tại trang Swagger (/docs)."
+)
 
-class Text2CypherResponse(BaseModel):
-    """_summary_
-
-    Args:
-        BaseModel (_type_): _description_
-    """
-    extraction: Dict[str, Any]
-    cypher: str
-    params: Dict[str, Any]
-    rows: Optional[List[Dict[str, Any]]] = None
-
-app = FastAPI(title="Text2Cypher API", version="1.0.0")
+app = FastAPI(
+    title="Visa Chatbot API",
+    version="1.0.0",
+    description=APP_DESCRIPTION,
+    openapi_tags=TAGS_METADATA,
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -50,11 +43,6 @@ def _startup() -> None:
     # Initialize database tables
     init_db()
     
-    # Build once; reuse between requests
-    # app.state.flow = build_flow()
-    # app.state.driver = connect_neo4j()
-    # app.state.schema_text = read_schema_snapshot(app.state.driver)
-
     # Initialize chatbot service (Gemini + Neo4j)
     try:
         driver = connect_neo4j()
@@ -66,7 +54,7 @@ def _startup() -> None:
         app.state.chatbot_service = None
         print(f"[startup] Chatbot service not initialized: {exc!r}")
 
-    # Provide safe defaults so /schema and text2cypher don't crash
+    # Provide safe defaults so /schema remains available even if init fails
     app.state.schema_text = getattr(app.state, "schema_text", None) or "Schema unavailable"
     app.state.driver = getattr(app.state, "driver", None) or connect_neo4j()
 
@@ -76,66 +64,17 @@ def _shutdown() -> None:
     if driver:
         driver.close()
 
-@app.get("/health")
-def health():
-    """_summary_
+@app.get("/", include_in_schema=False)
+def root() -> dict[str, str]:
+    """Landing endpoint directing users to Swagger docs."""
+    return {"status": "ok", "docs": "/docs", "health": "/health"}
 
-    Returns:
-        _type_: _description_
-    """
+@app.get("/health", tags=["system"])
+def health():
+    """Lightweight health check to verify the API is running."""
     return {"status": "ok"}
 
-@app.get("/schema")
+@app.get("/schema", tags=["system"])
 def schema():
-    """_summary_
-
-    Returns:
-        _type_: _description_
-    """
+    """Trả về snapshot schema Neo4j đã nạp lúc khởi động."""
     return {"schema": app.state.schema_text}
-
-@app.post("/text2cypher", response_model=Text2CypherResponse)
-def text2cypher(req: Text2CypherRequest):
-    """_summary_
-
-    Args:
-        req (Text2CypherRequest): _description_
-
-    Raises:
-        HTTPException: _description_
-
-    Returns:
-        _type_: _description_
-    """
-    try:
-        flow = getattr(app.state, "flow", None)
-        if not flow:
-            raise HTTPException(
-                status_code=503,
-                detail="text2cypher pipeline is not initialized.",
-            )
-
-        state = {
-            "question": req.question,
-            "schema_text": app.state.schema_text,
-            "extraction": None,
-            "query": None,
-            "rows": None,
-        }
-
-        final = flow.invoke(state)
-        extraction = final["extraction"]
-        query = final["query"]
-
-        rows = None
-        if req.execute:
-            rows = execute_cypher(app.state.driver, query.cypher, query.params)
-
-        return Text2CypherResponse(
-            extraction=extraction.model_dump(),
-            cypher=query.cypher,
-            params=query.params,
-            rows=rows,
-        )
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
