@@ -174,6 +174,7 @@ Only output valid JSON, no explanation. Do not include ```json ...``` block form
             return []
 
         query = QUERY_TEMPLATES[query_type]
+        print("Executing Cypher Query:", query)
         with self.driver.session(database=NEO4J_DATABASE) as session:
             result = session.run(query, **params)
             return [record.data() for record in result]
