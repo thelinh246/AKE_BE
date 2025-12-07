@@ -22,6 +22,8 @@ NEO4J_USERNAME = os.getenv("NEO4J_USERNAME")
 NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
+print("Connecting to Neo4j at:", NEO4J_URI)
+
 # Gemini API
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 genai.configure(api_key=GEMINI_API_KEY)
@@ -159,22 +161,25 @@ def detect_intent(user_query):
             "field": "...",
             "exam_type": "IELTS|TOEFL",
             "score": 6.5,
-            "visa_subclass": "500",
+            "subclass": "500",
             "keyword": "..."
         }},
         "query_type": "find_programs_by_university|find_programs_by_ielts|visa_info|..."
     }}
     
-    Chỉ trả về JSON, không giải thích.
+    Chỉ trả về JSON, không giải thích. Và không bao gồm định dạng json block.
     """
     
     response = model.generate_content(prompt)
+    print("Intent Detection Response:", response)
     try:
         # Parse JSON từ response
         result = json.loads(response.text.strip())
+        print("Parsed Intent Detection Result:", result)
         return result
     except:
         # Fallback
+        print("Failed to parse intent detection response, using fallback.")
         return {
             "intent": "STUDY",
             "entities": {},
@@ -191,7 +196,7 @@ def execute_cypher(query_type, params):
         return None
     
     query = QUERY_TEMPLATES[query_type]
-    
+    print("Executing Cypher Query:", query)
     with driver.session(database=NEO4J_DATABASE) as session:
         result = session.run(query, **params)
         data = [record.data() for record in result]
@@ -231,13 +236,13 @@ def chatbot_response(user_query):
     
     # Step 1: Detect intent & extract entities
     analysis = detect_intent(user_query)
-    
+    print("Detected Intent & Entities:", analysis)
     # Step 2: Execute query
     query_results = execute_cypher(
         analysis.get("query_type", "fallback"),
         analysis.get("entities", {})
     )
-    
+    print("Query Results:", query_results)
     # Step 3: Format response
     if query_results:
         response = format_response(user_query, query_results)
