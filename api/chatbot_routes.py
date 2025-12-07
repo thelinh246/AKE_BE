@@ -2,7 +2,7 @@
 from __future__ import annotations
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Header
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Header, Response
 from pydantic import BaseModel, Field
 
 from services.chatbot_service import ChatbotService, ChatbotResult
@@ -173,12 +173,12 @@ def get_conservation_details(
     return ConversationService.list_details(db, conversation_id)
 
 
-@router.delete("/conservations/{conversation_id}", status_code=204)
+@router.delete("/conservations/{conversation_id}", status_code=204, response_class=Response)
 def delete_conversation(
     conversation_id: int,
     db: Session = Depends(get_db),
     authorization: str = Header(...),
-) -> None:
+) -> Response:
     """
     Xóa một conservation cùng toàn bộ tin nhắn (yêu cầu Bearer token và phải thuộc user).
     """
@@ -191,4 +191,5 @@ def delete_conversation(
     ok = ConversationService.delete_conversation(db, conversation_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Conversation not found")
-    return None
+    # Explicitly return an empty 204 response to satisfy FastAPI validation
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
