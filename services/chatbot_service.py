@@ -156,7 +156,7 @@ Return format:
     "query_type": "find_programs_by_university|find_programs_by_ielts|visa_info|visa_eligibility|settlement_info|comprehensive_pathway"
 }}
 
-Only output valid JSON, no explanation. No include json code blocks.
+Only output valid JSON, no explanation. Do not include ```json ...``` block format.
 """
         response = self.model.generate_content(prompt)
         print("Intent Detection Response:", response)
