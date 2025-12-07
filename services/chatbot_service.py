@@ -214,6 +214,7 @@ Keep the answer short, helpful, and invite the user to ask for more details.
         analysis = self.detect_intent(cleaned_query)
         query_type = analysis.get("query_type") or analysis.get("intent") or "fallback"
         entities = analysis.get("entities") or {}
+        print("query_type:", query_type)
 
         rows = self.execute_cypher(query_type, entities)
         print("Cypher Query Results:", rows)
