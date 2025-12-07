@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: visa-api
+    runtime: docker          # Build từ Dockerfile
+    plan: free               # Có thể đổi: starter / standard / pro...
+    region: singapore        # Gần VN, có thể đổi nếu muốn
+    # Nếu render.yaml nằm cùng repo với code thì có thể bỏ repo + branch.
+    # Nếu muốn chỉ định rõ:
+    # repo: https://github.com/your-username/your-repo
+    # branch: main
+
+    dockerfilePath: ./Dockerfile
+    autoDeployTrigger: commit   # Tự deploy khi có commit mới lên branch này
+
+    envVars:
+      # DATABASE_URL: giống docker-compose nhưng lấy từ Postgres Render
+      - key: DATABASE_URL
+        fromDatabase:
+          name: visa-db
+          property: connectionString
+
+      # SECRET_KEY: cho sync:false để Render hỏi bạn lần đầu (secret)
+      - key: SECRET_KEY
+        sync: false
+
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+
+      # Neo4j: sửa URI cho đúng service/cluster của bạn
+      - key: NEO4J_URI
+        value: postgresql://postgre:EqhSVQJ4vXh7uc4AyRMmjdsgTdNTo3fM@dpg-d4qi4b0gjchc73bcg0p0-a.singapore-postgres.render.com/visa_db_pf11
+      - key: NEO4J_USER
+        value: neo4j
+      - key: NEO4J_PASSWORD
+        sync: false
+
+      # GOOGLE_API_KEY: cũng là secret, để sync:false
+      - key: GOOGLE_API_KEY
+        sync: false
+
+      - key: GEMINI_MODEL
+        value: gemini-2.5-pro
+
+databases:
+  - name: visa-db               # Tên instance Postgres trên Render
+    plan: free                  # Free (90 ngày) hoặc đổi sang basic/pro
+    region: singapore           # Nên trùng với region của service
+    postgresMajorVersion: "16"  # Hoặc bỏ để dùng version mới nhất
+    databaseName: visa_db       # Giống POSTGRES_DB trong compose
+    user: postgres              # Giống POSTGRES_USER
+    diskSizeGB: 1               # 1GB (free). Có thể tăng nếu dùng plan trả phí.
+    ipAllowList: []             # Chặn mọi kết nối ngoài Render (chỉ internal)

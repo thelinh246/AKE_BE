@@ -8,8 +8,6 @@ PyJWT==2.8.0
 python-dotenv==1.0.0
 neo4j==5.14.1
 pytest==7.4.0
-langgraph
-# langchain-google-genai==3.0.3
 pydantic[email]>=2.7.4,<3.0.0
 bcrypt==4.0.1
 google-generativeai
