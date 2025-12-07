@@ -78,3 +78,12 @@ class ConversationService:
             .order_by(ConservationDetail.created_at.asc())
         )
         return db.scalars(stmt).all()
+
+    @staticmethod
+    def delete_conversation(db: Session, conversation_id: int) -> bool:
+        convo = db.get(Conservation, conversation_id)
+        if not convo:
+            return False
+        db.delete(convo)
+        db.commit()
+        return True
