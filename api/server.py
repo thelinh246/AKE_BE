@@ -8,7 +8,7 @@ from services.database import init_db
 from services.chatbot_service import ChatbotService
 from .user_routes import router as user_router
 from .chatbot_routes import router as chatbot_router
-from .graph_routes import router as graph_router
+from .graph_routes import router as graph_router, admin_router as graph_admin_router
 
 TAGS_METADATA = [
     {"name": "users", "description": "Đăng ký, đăng nhập và quản lý người dùng"},
@@ -40,6 +40,7 @@ app.add_middleware(
 app.include_router(user_router)
 app.include_router(chatbot_router)
 app.include_router(graph_router)
+app.include_router(graph_admin_router)
 
 @app.on_event("startup")
 def _startup() -> None:

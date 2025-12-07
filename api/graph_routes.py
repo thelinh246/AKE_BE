@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from services.neo4j_exec import connect_neo4j
 
 router = APIRouter(prefix="/api/graph", tags=["graph"])
+# Alias router for admin namespace (same handlers)
+admin_router = APIRouter(prefix="/api/admin/graph", tags=["graph"])
 
 
 class LabelStat(BaseModel):
@@ -139,3 +141,9 @@ def graph_summary(request: Request) -> GraphSummaryResponse:
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Neo4j query failed: {exc}",
         ) from exc
+
+
+@admin_router.get("/summary", response_model=GraphSummaryResponse)
+def admin_graph_summary(request: Request) -> GraphSummaryResponse:
+    """Alias admin endpoint trả về thống kê đồ thị Neo4j."""
+    return graph_summary(request)
