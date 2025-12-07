@@ -16,6 +16,7 @@ from services.neo4j_exec import connect_neo4j
 
 load_dotenv()
 
+SCHEMA_PATH = Path(__file__).resolve().parent.parent / "schema.txt"
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
 DEFAULT_SYSTEM_PROMPT = (
@@ -143,6 +144,13 @@ class ChatbotService:
             system_instruction=DEFAULT_SYSTEM_PROMPT,
         )
         self.driver = driver or connect_neo4j()
+        self.schema_text = self._load_schema_text()
+
+    @staticmethod
+    def _load_schema_text(max_chars: int = 4000) -> str:
+        if SCHEMA_PATH.exists():
+            return SCHEMA_PATH.read_text(encoding="utf-8")[:max_chars]
+        return ""
 
     def detect_intent(self, user_query: str) -> Dict[str, Any]:
         prompt = f"""
@@ -182,11 +190,47 @@ Only output valid JSON, no explanation. Do not include ```json ...``` block form
         if query_type not in QUERY_TEMPLATES or not self.driver:
             return []
 
-        query = QUERY_TEMPLATES[query_type]
-        print("Executing Cypher Query:", query)
+        cypher = self.generate_cypher_query(query_type, params) or QUERY_TEMPLATES[query_type]
+        print("Executing Cypher Query:", cypher)
         with self.driver.session(database=NEO4J_DATABASE) as session:
-            result = session.run(query, **params)
+            result = session.run(cypher, **params)
             return [record.data() for record in result]
+
+    def generate_cypher_query(self, query_type: str, params: Dict[str, Any]) -> Optional[str]:
+        """
+        Use Gemini to adapt a base template to the current schema and keep result size small.
+        Enforces LIMIT 5 and trimmed RETURN fields to reduce output length.
+        """
+        base = QUERY_TEMPLATES.get(query_type)
+        if not base:
+            return None
+
+        schema_hint = self.schema_text or "Schema unavailable"
+        prompt = f"""
+Bạn là chuyên gia Cypher. Dựa trên schema và template, tạo một câu Cypher ngắn gọn:
+- Giữ logic template nhưng tùy chỉnh trường/nhãn cho phù hợp schema.
+- Bắt buộc LIMIT 5.
+- RETURN chỉ các trường quan trọng (tránh collect quá nhiều), ưu tiên tên, url/link, điểm số.
+- Không giải thích; chỉ trả về chuỗi Cypher duy nhất.
+
+Schema (rút gọn):
+{schema_hint}
+
+Template gợi ý:
+{base}
+
+Params (JSON): {json.dumps(params, ensure_ascii=False)}
+"""
+        try:
+            resp = self.model.generate_content(prompt)
+            text = (resp.text or "").strip()
+            if not text:
+                return base
+            if "limit" not in text.lower():
+                text = f"{text}\nLIMIT 5"
+            return text
+        except Exception:
+            return base
 
     def format_response(self, user_query: str, query_results: List[Dict[str, Any]]) -> str:
         prompt = f"""
