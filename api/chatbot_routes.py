@@ -171,3 +171,24 @@ def get_conservation_details(
         # Không tiết lộ tồn tại nếu không sở hữu
         raise HTTPException(status_code=404, detail="Conversation not found")
     return ConversationService.list_details(db, conversation_id)
+
+
+@router.delete("/conservations/{conversation_id}", status_code=204)
+def delete_conversation(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    authorization: str = Header(...),
+) -> None:
+    """
+    Xóa một conservation cùng toàn bộ tin nhắn (yêu cầu Bearer token và phải thuộc user).
+    """
+    user_id = _require_user_id(db, authorization)
+    conversation = ConversationService.get_conversation(db, conversation_id)
+    if not conversation or conversation.user_id != user_id:
+        # Không tiết lộ nếu không sở hữu
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    ok = ConversationService.delete_conversation(db, conversation_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return None

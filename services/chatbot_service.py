@@ -189,12 +189,15 @@ Only output valid JSON, no explanation. Do not include ```json ...``` block form
     def execute_cypher(self, query_type: str, params: Dict[str, Any]) -> List[Dict[str, Any]]:
         if query_type not in QUERY_TEMPLATES or not self.driver:
             return []
-
-        cypher = self.generate_cypher_query(query_type, params) or QUERY_TEMPLATES[query_type]
-        print("Executing Cypher Query:", cypher)
-        with self.driver.session(database=NEO4J_DATABASE) as session:
-            result = session.run(cypher, **params)
-            return [record.data() for record in result]
+        try:
+            cypher = self.generate_cypher_query(query_type, params) or QUERY_TEMPLATES[query_type]
+            print("Executing Cypher Query:", cypher)
+            with self.driver.session(database=NEO4J_DATABASE) as session:
+                result = session.run(cypher, **params)
+                return [record.data() for record in result]
+        except Exception as exc:
+            print(f"Error executing cypher for {query_type}: {exc!r}")
+            return []
 
     def generate_cypher_query(self, query_type: str, params: Dict[str, Any]) -> Optional[str]:
         """
