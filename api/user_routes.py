@@ -227,44 +227,6 @@ def list_users(skip: int = 0, limit: int = 10, db: Any = Depends(get_db)) -> lis
     return [UserResponse.from_orm(user) for user in users]
 
 
-@router.put("/{user_id}", response_model=UserResponse)
-def update_user(
-    user_id: str,
-    user_update: UserUpdate,
-    db: Any = Depends(get_db)
-) -> UserResponse:
-    """
-    Update user information.
-    
-    Args:
-        user_id: User ID
-        user_update: User update data
-        db: Database session
-        
-    Returns:
-        Updated user information
-        
-    Raises:
-        HTTPException: If user not found or email/username already exists
-    """
-    if user_update.password:
-        _validate_password_length(user_update.password)
-
-    try:
-        user = UserService.update_user(db, user_id, user_update)
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="User not found"
-            )
-        return UserResponse.from_orm(user)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-
-
 @router.put("/me", response_model=UserResponse)
 def update_current_user(
     user_update: UserUpdate,
@@ -297,6 +259,44 @@ def update_current_user(
                 detail="User not found"
             )
         return UserResponse.from_orm(updated_user)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.put("/{user_id}", response_model=UserResponse)
+def update_user(
+    user_id: str,
+    user_update: UserUpdate,
+    db: Any = Depends(get_db)
+) -> UserResponse:
+    """
+    Update user information.
+    
+    Args:
+        user_id: User ID
+        user_update: User update data
+        db: Database session
+        
+    Returns:
+        Updated user information
+        
+    Raises:
+        HTTPException: If user not found or email/username already exists
+    """
+    if user_update.password:
+        _validate_password_length(user_update.password)
+
+    try:
+        user = UserService.update_user(db, user_id, user_update)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        return UserResponse.from_orm(user)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
