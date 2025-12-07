@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Optional, Any
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 
@@ -18,6 +18,61 @@ from models.user import (
 )
 
 router = APIRouter(prefix="/api/users", tags=["users"])
+
+
+def _validate_password_length(password: str) -> None:
+    """Enforce bcrypt 72-byte limit on password bytes."""
+    pw_bytes = password.encode("utf-8")
+    if len(pw_bytes) > 72:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="password must be at most 72 bytes when encoded in UTF-8; truncate or shorten the password",
+        )
+
+
+def _get_user_from_token(authorization: str, db: Any):
+    """Resolve current user from a Bearer token."""
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            raise ValueError()
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication scheme",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = decode_token(token)
+    if payload is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    email: str | None = payload.get("sub")
+    if email is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = UserService.get_user_by_email(db, email)
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return user
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
@@ -55,12 +110,7 @@ def register(user: UserCreate, db: Any = Depends(get_db)) -> UserResponse:
         # Enforce bcrypt 72-byte limit on password bytes to provide a
         # clear validation error before attempting to hash.
         if user.password:
-            pw_bytes = user.password.encode("utf-8")
-            if len(pw_bytes) > 72:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail="password must be at most 72 bytes when encoded in UTF-8; truncate or shorten the password",
-                )
+            _validate_password_length(user.password)
 
         db_user = UserService.create_user(db, user)
         return UserResponse.from_orm(db_user)
@@ -132,48 +182,7 @@ def get_current_user(
     Raises:
         HTTPException: If token is invalid or user not found
     """
-    if not authorization:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # Extract token from "Bearer <token>" format
-    try:
-        scheme, token = authorization.split()
-        if scheme.lower() != "bearer":
-            raise ValueError()
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication scheme",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    payload = decode_token(token)
-    if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    email: str = payload.get("sub")
-    if email is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    user = UserService.get_user_by_email(db, email)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found"
-        )
-    
+    user = _get_user_from_token(authorization, db)
     return UserResponse.from_orm(user)
 
 
@@ -238,6 +247,9 @@ def update_user(
     Raises:
         HTTPException: If user not found or email/username already exists
     """
+    if user_update.password:
+        _validate_password_length(user_update.password)
+
     try:
         user = UserService.update_user(db, user_id, user_update)
         if not user:
@@ -246,6 +258,45 @@ def update_user(
                 detail="User not found"
             )
         return UserResponse.from_orm(user)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.put("/me", response_model=UserResponse)
+def update_current_user(
+    user_update: UserUpdate,
+    authorization: str = Header(None),
+    db: Any = Depends(get_db)
+) -> UserResponse:
+    """
+    Update the current authenticated user's information.
+    
+    Args:
+        user_update: User update data
+        authorization: Authorization header with Bearer token
+        db: Database session
+        
+    Returns:
+        Updated user information
+        
+    Raises:
+        HTTPException: If authentication fails or validation errors occur
+    """
+    if user_update.password:
+        _validate_password_length(user_update.password)
+
+    try:
+        user = _get_user_from_token(authorization, db)
+        updated_user = UserService.update_user(db, str(user.id), user_update)
+        if not updated_user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+        return UserResponse.from_orm(updated_user)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

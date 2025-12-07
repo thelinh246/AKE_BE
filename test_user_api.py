@@ -66,6 +66,20 @@ def test_get_current_user(token):
     return response.json() if response.status_code == 200 else None
 
 
+def test_update_current_user(token):
+    """Test update current authenticated user."""
+    print(f"\n{GREEN}Testing Update Current User...{RESET}")
+
+    headers = {"Authorization": f"Bearer {token}"}
+    update_data = {
+        "full_name": "Updated Current User",
+        "username": "updatedme"
+    }
+
+    response = requests.put(f"{BASE_URL}/me", json=update_data, headers=headers)
+    print_response("PUT /api/users/me", response)
+
+
 def test_list_users():
     """Test list all users."""
     print(f"\n{GREEN}Testing List All Users...{RESET}")
@@ -169,6 +183,7 @@ def main():
     
     # Test get current user
     test_get_current_user(token)
+    test_update_current_user(token)
     
     # Test list users
     test_list_users()
