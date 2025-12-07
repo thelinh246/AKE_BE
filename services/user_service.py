@@ -136,3 +136,19 @@ class UserService:
         db.commit()
         db.refresh(user)
         return user
+
+    @staticmethod
+    def activate_user(db: Session, user_id: str) -> Optional[User]:
+        try:
+            uid = int(user_id)
+        except Exception:
+            return None
+        user = db.get(User, uid)
+        if not user:
+            return None
+        user.is_active = True
+        user.updated_at = datetime.utcnow()
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user

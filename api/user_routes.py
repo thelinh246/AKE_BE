@@ -295,3 +295,17 @@ def deactivate_user(user_id: str, db: Any = Depends(get_db)) -> UserResponse:
             detail="User not found"
         )
     return UserResponse.from_orm(user)
+
+
+@router.post("/{user_id}/activate", response_model=UserResponse)
+def activate_user(user_id: str, db: Any = Depends(get_db)) -> UserResponse:
+    """
+    Activate a user account.
+    """
+    user = UserService.activate_user(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    return UserResponse.from_orm(user)

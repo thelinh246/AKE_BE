@@ -32,6 +32,7 @@ class UserUpdate(BaseModel):
 class UserResponse(UserBase):
     """User model for API responses."""
     id: int
+    is_active: bool = True
     created_at: datetime
     updated_at: datetime
 
