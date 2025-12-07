@@ -29,6 +29,7 @@ class UserService:
             email=user.email,
             username=user.username,
             full_name=user.full_name,
+            role=user.role,
             hashed_password=hash_password(user.password),
             is_active=True,
             created_at=datetime.utcnow(),
@@ -92,6 +93,8 @@ class UserService:
             user.full_name = user_update.full_name
         if user_update.password:
             user.hashed_password = hash_password(user_update.password)
+        if user_update.role:
+            user.role = user_update.role
 
         user.updated_at = datetime.utcnow()
         db.add(user)
