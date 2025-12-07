@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
@@ -12,6 +12,7 @@ class UserBase(BaseModel):
     email: EmailStr
     username: str = Field(..., min_length=3, max_length=50)
     full_name: Optional[str] = None
+    role: Literal["admin", "user"] = "user"
 
 
 class UserCreate(UserBase):
@@ -25,6 +26,7 @@ class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     full_name: Optional[str] = None
     password: Optional[str] = Field(None, min_length=8)
+    role: Optional[Literal["admin", "user"]] = None
 
 
 class UserResponse(UserBase):

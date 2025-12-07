@@ -10,7 +10,7 @@ uvicorn api.server:app --reload
 ```
 
 ## Các nhóm endpoint (xem chi tiết trong /docs)
-- **Users** (`/api/users/...`): đăng ký, đăng nhập, lấy thông tin, cập nhật, vô hiệu hóa tài khoản.
+- **Users** (`/api/users/...`): đăng ký, đăng nhập, lấy thông tin, cập nhật, vô hiệu hóa tài khoản (field `role`: `admin` | `user`, mặc định `user`).
 - **Chatbot** (`/api/chatbot/...`): hỏi đáp tư vấn du học/visa Úc, lưu lịch sử hội thoại.
 - **System**: `/health` kiểm tra service, `/schema` xem snapshot schema Neo4j.
 
