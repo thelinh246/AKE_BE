@@ -16,7 +16,8 @@ from services.neo4j_exec import connect_neo4j
 
 load_dotenv()
 
-SYSTEM_PROMPT_PATH = Path(__file__).resolve().parent.parent / "system_prompt.txt"
+# SYSTEM_PROMPT_PATH = Path(__file__).resolve().parent.parent / "system_prompt.txt"
+# PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts"
 NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", "neo4j")
 
 DEFAULT_SYSTEM_PROMPT = (
@@ -138,9 +139,30 @@ class ChatbotService:
 
     @staticmethod
     def _load_system_prompt() -> str:
+        bundle = ChatbotService._load_prompt_bundle()
+        if bundle:
+            return bundle
         if SYSTEM_PROMPT_PATH.exists():
             return SYSTEM_PROMPT_PATH.read_text(encoding="utf-8").strip()
         return DEFAULT_SYSTEM_PROMPT
+
+    @staticmethod
+    def _load_prompt_bundle(max_chars_per_file: int = 2000) -> str:
+        """Load all prompt fragments from prompts/ and join into one instruction."""
+        if not PROMPTS_DIR.exists():
+            return ""
+
+        parts: list[str] = []
+        for path in sorted(PROMPTS_DIR.glob("*.txt")):
+            try:
+                content = path.read_text(encoding="utf-8").strip()
+                if max_chars_per_file:
+                    content = content[:max_chars_per_file]
+                parts.append(f"[{path.stem}]\n{content}")
+            except Exception:
+                continue
+
+        return "\n\n".join(parts)
 
     def detect_intent(self, user_query: str) -> Dict[str, Any]:
         prompt = f"""
