@@ -207,16 +207,16 @@ Only output valid JSON, no explanation. Do not include ```json ...``` block form
 
         schema_hint = self.schema_text or "Schema unavailable"
         prompt = f"""
-Bạn là chuyên gia Cypher. Dựa trên schema và template, tạo một câu Cypher ngắn gọn:
-- Giữ logic template nhưng tùy chỉnh trường/nhãn cho phù hợp schema.
-- Bắt buộc LIMIT 5.
-- RETURN chỉ các trường quan trọng (tránh collect quá nhiều), ưu tiên tên, url/link, điểm số.
-- Không giải thích; chỉ trả về chuỗi Cypher duy nhất.
+You are a Cypher expert. Based on the schema and template, create a concise Cypher sentence:
+- Keep the template logic but customize the fields/labels to match the schema.
+- Force LIMIT 5.
+- RETURN only important fields (avoid collecting too many), prioritize name, url/link, score.
+- No explanation; just return a unique Cypher string. Do not include ```cypher ... ``` block.
 
-Schema (rút gọn):
+Schema:
 {schema_hint}
 
-Template gợi ý:
+Template:
 {base}
 
 Params (JSON): {json.dumps(params, ensure_ascii=False)}
