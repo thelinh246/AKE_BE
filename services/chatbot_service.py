@@ -159,6 +159,7 @@ Return format:
 Only output valid JSON, no explanation. No include json code blocks.
 """
         response = self.model.generate_content(prompt)
+        print("Intent Detection Response:", response)
         try:
             return json.loads(response.text.strip())
         except Exception:
@@ -214,6 +215,7 @@ Keep the answer short, helpful, and invite the user to ask for more details.
         entities = analysis.get("entities") or {}
 
         rows = self.execute_cypher(query_type, entities)
+        print("Cypher Query Results:", rows)
         if rows:
             reply = self.format_response(cleaned_query, rows)
             print("Reply:", reply)
