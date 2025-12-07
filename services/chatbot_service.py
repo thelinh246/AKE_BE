@@ -86,13 +86,25 @@ QUERY_TEMPLATES: Dict[str, str] = {
         MATCH (p:Program)-[:FOCUSES_ON]->(subj:Subject)
         WHERE toLower(subj.name) CONTAINS toLower($field)
         MATCH (p)<-[:OFFERS]-(pl:ProgramLevel)<-[:HAS_LEVEL]-(pg:ProgramGroup)
-              <-[:HAS_PROGRAMS]-(u:University)
+            <-[:HAS_PROGRAMS]-(u:University)
         OPTIONAL MATCH (p)-[:HAS_REQUIRED]->(es:ExamScore)<-[:HAS_SCORE]-(e:Exam)
         WITH u, p, collect({exam: e.name, score: es.value}) AS requirements
         LIMIT 3
+
+        // Lấy visa du học
         MATCH (v:Visa {subclass: "500"})
+        WITH u, p, requirements, v
+
+        // Lấy danh sách visa PR liên quan
         MATCH (vpr:Visa)
         WHERE vpr.subclass IN ["189", "190"]
+        WITH
+            u, p, requirements, v,
+            collect(DISTINCT {
+                name: vpr.name_visa,
+                subclass: vpr.subclass
+            }) AS pr_visas
+
         RETURN {
             study: {
                 university: u.name,
@@ -104,10 +116,7 @@ QUERY_TEMPLATES: Dict[str, str] = {
                 name: v.name_visa,
                 subclass: v.subclass
             },
-            pr_visas: collect(DISTINCT {
-                name: vpr.name_visa,
-                subclass: vpr.subclass
-            })
+            pr_visas: pr_visas
         } AS pathway
     """,
 }
