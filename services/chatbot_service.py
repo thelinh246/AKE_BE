@@ -157,13 +157,13 @@ Return format:
         "field": "...",
         "exam_type": "IELTS|TOEFL",
         "score": 6.5,
-        "visa_subclass": "500",
+        "subclass": "500",
         "keyword": "..."
     }},
     "query_type": "find_programs_by_university|find_programs_by_ielts|visa_info|visa_eligibility|settlement_info|comprehensive_pathway"
 }}
 
-Only output valid JSON, no explanation.
+Only output valid JSON, no explanation. No include json code blocks.
 """
         response = self.model.generate_content(prompt)
         try:
@@ -223,8 +223,10 @@ Keep the answer short, helpful, and invite the user to ask for more details.
         rows = self.execute_cypher(query_type, entities)
         if rows:
             reply = self.format_response(cleaned_query, rows)
+            print("Reply:", reply)
         else:
             reply = self._fallback_response(cleaned_query)
+            print("Fallback Reply:", reply)
 
         return ChatbotResult(
             reply=reply,
