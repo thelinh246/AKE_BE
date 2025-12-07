@@ -28,10 +28,16 @@ services:
 
       # Neo4j: sửa URI cho đúng service/cluster của bạn
       - key: NEO4J_URI
-        value: postgresql://postgre:EqhSVQJ4vXh7uc4AyRMmjdsgTdNTo3fM@dpg-d4qi4b0gjchc73bcg0p0-a.singapore-postgres.render.com/visa_db_pf11
+        value: neo4j+s://bc46aaa2.databases.neo4j.io
       - key: NEO4J_USER
         value: neo4j
       - key: NEO4J_PASSWORD
+        sync: false
+      - key: NEO4J_DATABASE
+        value: neo4j
+      - key: AURA_INSTANCEID
+        sync: false
+      - key: AURA_INSTANCENAME
         sync: false
 
       # GOOGLE_API_KEY: cũng là secret, để sync:false
